@@ -1,29 +1,14 @@
-const express = require('express')
-const app = express()
-const multer = require('multer')
-const { Pool } = require('pg')
+const express = require('express');
+const multer = require('multer');
+const bodyParser = require('body-parser');
+const db = require('./db');
 
-const pool = new Pool({
-    user: 'your_username', //username for your PostgreSQL database
-    host: 'your_host', // host or IP address where your PostgreSQL server is running
-    database: 'your_database', // Name of the database you want to connect to
-    password: 'your_password',// password for your database user
-    port: 5432, // PostgreSQL port
-})
-/*
-Local Development:
+const app = express();
+const port = 3000;
 
-User: If you installed PostgreSQL locally, you might be using the default user, which is often postgres. Alternatively, you might have created a new user during the PostgreSQL installation process.
-Host: For local development, the host is typically localhost or 127.0.0.1, which refers to the local machine.
-Database: You should know the name of the database you want to connect to. If you haven't created one yet, you can use the default postgres database or create a new one using a PostgreSQL administration tool.
-Password: During the installation process, you might have set a password for the default postgres user or any other user you created. If you don't remember the password or didn't set one, you can try accessing the database without a password.
-Hosting Providers:
+app.use(bodyParser.json());
 
-User: Depending on your hosting provider, they may provide you with a specific username or allow you to create a new database user.
-Host: Hosting providers usually provide a hostname or IP address associated with your PostgreSQL database.
-Database: You need to know the name of the database provided by your hosting service.
-Password: When setting up your database, you might have been prompted to create a password for the user associated with the database.
-*/
+
 
 //Multer storage configuration
 const storage = multer.memoryStorage()
@@ -33,25 +18,35 @@ const upload = multer({ storage })
 //Express route for file upload
 app.post('/upload', upload.single('image'), (req, res) => {
     const { originalname, buffer } = req.file
-    
-    // Save the file to the database
-pool.query('INSERT INTO images (name, data) VALUES ($1, $2)', [originalname, buffer], (error, result) => {
-    if(error) {
-        console.error('Error saving image to database', error)
-        res.status(500).send('Error saving image to database')
-    } else {
-        res.send('Image uploaded successfully!')
-    }
-})
+
+    db.uploadPhoto(originalname, buffer)
+    .then((photoId) => {
+        res.send(`Photo uploaded successfully with ID: ${photoId}`)
+    })
+    .catch((error) => {
+        console.error(`Error uploading photo`, error)
+        res.status(500).send('Error uploading photo')
+    })
 })
 
-//app.post('/upload'....) defines a POST route for the /upload URL path
+    //app.post('/upload'....) defines a POST route for the /upload URL path
 
 //upload.single('image') This part is middleware provided by multr. It is used to handle a single upload with the field name 'image'. If the request contains multi files or the field name does not match then 'multr' will rise an error.
 
 // originalname is the name of the uploaded file as specified by the client.
 
 //buffer contains the binary data of the uploaded file stored in memory (if using multer.memoryStorage() as the storage engine)
+
+    // Save the file to the database
+//Over all the above code handles the execution of the SQL query to insert the uploaded image into the PostgreSQL database. It also handles the response and errors
+// 'pool.query() is method provided by pg (node-postgres) library and is used to send a SQL query to the database. It takes three parameters: The SQL query string, an array of values to substitute into the query, and a callback function that handles the query result or error.
+//'Insert INTO images (name, data) Values ($1, $2) is the SQL query being executed. It is an INSERT statement that inserts data into the 'images' table. The (name, data) column names represent the columns where the file's name and data will be stored, respectively. The $1 and $2 are placeholders for the values to be inserted.
+// [originalname, buffer] This array provides the values to be substituted into the SQL query. originalname refers to the file's original name and buffer referres to binary data
+// (error, result) => {...} This is the callback function that handles the result or error returned by the pool.query() method. 
+// res.send('Image uploaded successfully') This line sends a response to the client with the message string. It indicates that the image was uploaded and saved to the database successfully.
+
+
+
 
 /*Things to consider with storage:
 1. Disk Storage
@@ -66,4 +61,9 @@ pool.query('INSERT INTO images (name, data) VALUES ($1, $2)', [originalname, buf
     -this is a multer thing that stores and uploads the file in memory
     - this is great for small, single file uploads. A few megabytes in size or smaller. For example, it works well for handling image thumbnails, small documents, or short audio clips.
 */
+
+//Start the server
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`)
+})
 
