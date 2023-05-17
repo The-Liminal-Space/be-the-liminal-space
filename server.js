@@ -24,3 +24,12 @@ Host: Hosting providers usually provide a hostname or IP address associated with
 Database: You need to know the name of the database provided by your hosting service.
 Password: When setting up your database, you might have been prompted to create a password for the user associated with the database.
 */
+
+//Multer storage configuration
+const storage = multer.memoryStorage()
+const upload = multer({ storage })
+
+//Express route for file upload
+app.post('/upload', upload.single('image')), (req, res) => {
+    const { originalname, buffer } = req.file
+}
